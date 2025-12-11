@@ -1,84 +1,84 @@
 # Import standard libraries
 import tkinter as tk
 from tkinter import ttk
-import threading
-import time
-import platform
+# import threading
+# import time
+# import platform
 
 # -----------------------------
 # Detect Platform
 # -----------------------------
-IS_RPI = platform.system() == "Linux"  # Raspberry Pi usually reports 'Linux'
+# IS_RPI = platform.system() == "Linux"  # Raspberry Pi usually reports 'Linux'
 
-# -----------------------------
-# Raspberry Pi Hardware Setup
-# -----------------------------
-if IS_RPI:
-    import RPi.GPIO as GPIO
-    from mfrc522 import SimpleMFRC522
+# # -----------------------------
+# # Raspberry Pi Hardware Setup
+# # -----------------------------
+# if IS_RPI:
+#     import RPi.GPIO as GPIO
+#     from mfrc522 import SimpleMFRC522
 
-    # Solenoid lock pin
-    SOLENOID_LOCK_PIN = 17
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(SOLENOID_LOCK_PIN, GPIO.OUT)
+#     # Solenoid lock pin
+#     SOLENOID_LOCK_PIN = 17
+#     GPIO.setmode(GPIO.BCM)
+#     GPIO.setup(SOLENOID_LOCK_PIN, GPIO.OUT)
 
-    def solenoid_lock_on():
-        GPIO.output(SOLENOID_LOCK_PIN, GPIO.HIGH)
+#     def solenoid_lock_on():
+#         GPIO.output(SOLENOID_LOCK_PIN, GPIO.HIGH)
 
-    def solenoid_lock_off():
-        GPIO.output(SOLENOID_LOCK_PIN, GPIO.LOW)
+#     def solenoid_lock_off():
+#         GPIO.output(SOLENOID_LOCK_PIN, GPIO.LOW)
 
-    # RFID reader
-    reader = SimpleMFRC522()
-else:
-    # Windows simulation
-    def solenoid_lock_on():
-        print("[SIM] Solenoid ON")
+#     # RFID reader
+#     reader = SimpleMFRC522()
+# else:
+#     # Windows simulation
+#     def solenoid_lock_on():
+#         print("[SIM] Solenoid ON")
 
-    def solenoid_lock_off():
-        print("[SIM] Solenoid OFF")
+#     def solenoid_lock_off():
+#         print("[SIM] Solenoid OFF")
 
-    class SimpleMFRC522:
-        def read_no_block(self):
-            return None, None
+#     class SimpleMFRC522:
+#         def read_no_block(self):
+#             return None, None
 
-    reader = SimpleMFRC522()
+#     reader = SimpleMFRC522()
 
 
 # -----------------------------
 # RFID Thread
 # -----------------------------
-class RFIDThread:
-    def __init__(self):
-        self.running = False
-        self.thread = None
+# class RFIDThread:
+#     def __init__(self):
+#         self.running = False
+#         self.thread = None
 
-    def start(self, callback):
-        self.running = True
-        self.thread = threading.Thread(target=self.read_loop, args=(callback,), daemon=True)
-        self.thread.start()
+#     def start(self, callback):
+#         self.running = True
+#         self.thread = threading.Thread(target=self.read_loop, args=(callback,), daemon=True)
+#         self.thread.start()
 
-    def stop(self):
-        self.running = False
+#     def stop(self):
+#         self.running = False
 
-    def read_loop(self, callback):
-        if IS_RPI:
-            while self.running:
-                try:
-                    uid, text = reader.read_no_block()
-                    if uid:
-                        callback(uid)
-                except:
-                    pass
-                time.sleep(0.2)
-        else:
-            # Windows simulation: just send a test UID after 1 second
-            if self.running:
-                time.sleep(1)
-                callback("SIMULATED_TAG_1234")
+#     def read_loop(self, callback):
+#         if IS_RPI:
+#             while self.running:
+#                 try:
+#                     uid, text = reader.read_no_block()
+#                     if uid:
+#                         callback(uid)
+#                 except:
+#                     pass
+#                 time.sleep(0.2)
+#         else:
+#             # Windows simulation: just send a test UID after 1 second
+#             if self.running:
+#                 time.sleep(1)
+#                 callback("SIMULATED_TAG_1234")
 
 
-rfid = RFIDThread()
+# rfid = RFIDThread()
 
 class App(tk.Tk):
     def __init__(self):
@@ -140,16 +140,16 @@ class UserPage(tk.Frame):
         ttk.Button(self, text="Tagasi avalehele",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
 
-    def start_rfid(self):
-        self.output.config(text="Scan RFID...")
-        rfid.start(self.show_uid)
+    # def start_rfid(self):
+    #     self.output.config(text="Scan RFID...")
+    #     rfid.start(self.show_uid)
 
-    def stop_rfid(self):
-        rfid.stop()
+    # def stop_rfid(self):
+    #     rfid.stop()
 
-    def show_uid(self, uid):
-        """Called when a tag is detected"""
-        self.output.config(text=f"Card UID: {uid}")
+    # def show_uid(self, uid):
+    #     """Called when a tag is detected"""
+    #     self.output.config(text=f"Card UID: {uid}")
 
 # -----------------------------
 # PAGE 2
@@ -177,12 +177,12 @@ class BorrowPage(tk.Frame):
                    command=lambda: controller.show(HomePage)).pack(pady=20)
         
 # Open solenoid lock
-def solenoid_lock_open():
-    GPIO.output(SOLENOID_LOCK_PIN, GPIO.HIGH)
+# def solenoid_lock_open():
+#     GPIO.output(SOLENOID_LOCK_PIN, GPIO.HIGH)
 
-# Close solenoid lock
-def solenoid_lock_close():
-    GPIO.output(SOLENOID_LOCK_PIN, GPIO.LOW)
+# # Close solenoid lock
+# def solenoid_lock_close():
+#     GPIO.output(SOLENOID_LOCK_PIN, GPIO.LOW)
 
 
 # Main function

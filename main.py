@@ -115,7 +115,7 @@ class HomePage(tk.Frame):
 
         ttk.Label(self, text="Siit kapist saad töökoja võtme, et kasutada ja laenutada tööriistu kuni 24 tunniks.").pack(pady=40)
 
-        ttk.Button(self, text="Tuvasta kasutaja",
+        ttk.Button(self, text="Kasutaja tuvastamine",
                    command=lambda: controller.show(UserPage)).pack(pady=10)
         
         ttk.Button(self, text="Tööriistade laenutamine",
@@ -134,7 +134,7 @@ class UserPage(tk.Frame):
 
         ttk.Label(self, text="Kasutaja tuvastamiseks viipa kaarti!").pack(pady=40)
 
-        ttk.Button(self, text="Tagasi avalehele",
+        ttk.Button(self, text="Registreeri uus kasutaja",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
         
         ttk.Button(self, text="Tagasi avalehele",

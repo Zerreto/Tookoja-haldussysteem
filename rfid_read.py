@@ -2,45 +2,56 @@ from periphery import GPIO
 import spidev
 from time import sleep
 
-# Setup RST
+# RST pin
 rst = GPIO("/dev/gpiochip0", 25, "out")
-rst.write(True)
 
-# Setup SPI
+# SPI setup
 spi = spidev.SpiDev()
-spi.open(0, 0)
-spi.max_speed_hz = 500000
+spi.open(0, 0)  # bus 0, CE0
+spi.max_speed_hz = 100000  # slow for reliability
 
-# Registers
-FIFO = 0x09
-COMMAND = 0x01
-BIT_FRAMING = 0x0D
-REQIDL = 0x26
-ANTICOLL = 0x93
+# RC522 registers
+FIFO, COMMAND, BIT_FRAMING, ERROR_REG = 0x09, 0x01, 0x0D, 0x06
+REQIDL, ANTICOLL = 0x26, 0x93
 
-def write_reg(a, v): spi.xfer([(a<<1)&0x7E, v])
-def read_reg(a): return spi.xfer([((a<<1)&0x7E)|0x80,0])[1]
+def write_reg(addr, val):
+    spi.xfer([(addr << 1) & 0x7E, val])
 
-# Simple init
-write_reg(COMMAND, 0x0F)
-sleep(0.05)
+def read_reg(addr):
+    return spi.xfer([((addr << 1) & 0x7E) | 0x80, 0])[1]
 
-print("Hold a card near the reader...")
-
-while True:
-    write_reg(BIT_FRAMING, 0x07)
-    write_reg(FIFO, REQIDL)
-    write_reg(COMMAND, 0x0C)
+def reset_reader():
+    rst.write(False)
     sleep(0.05)
-    if read_reg(0x06)==0:  # ERROR_REG == 0 means card detected
+    rst.write(True)
+    sleep(0.05)
+    write_reg(COMMAND, 0x0F)
+    sleep(0.05)
+
+# Initialize
+reset_reader()
+print("Hold card near the reader...")
+
+try:
+    while True:
+        # Request card
+        write_reg(BIT_FRAMING, 0x07)
+        write_reg(FIFO, REQIDL)
+        write_reg(COMMAND, 0x0C)
+        sleep(0.02)
+        error = read_reg(ERROR_REG)
+
+        # Anticollision (read UID) regardless of error
         write_reg(BIT_FRAMING, 0x00)
         write_reg(FIFO, ANTICOLL)
         write_reg(COMMAND, 0x0C)
-        sleep(0.05)
+        sleep(0.02)
         uid = [read_reg(FIFO) for _ in range(5)]
-        print("Card UID:", uid)
-        break
-    sleep(0.2)
 
-spi.close()
-rst.close()
+        print(f"ERROR_REG: 0x{error:02X}, UID bytes: {uid}")
+        sleep(0.05)
+
+except KeyboardInterrupt:
+    spi.close()
+    rst.close()
+    print("Exit.")

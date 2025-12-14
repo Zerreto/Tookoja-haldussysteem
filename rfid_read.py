@@ -1,20 +1,23 @@
-from mfrc522 import SimpleMFRC522
-import RPi.GPIO as GPIO
+from pirc522 import RFID
+import time
 
-reader = SimpleMFRC522()
+rdr = RFID()
 
-print("RC522 RFID reader ready")
-print("Place your card near the reader...")
+print("RC522 ready - scan a card")
 
 try:
     while True:
-        uid, text = reader.read()
-        print("UID:", uid)
-        print("Text:", text)
-        print("-" * 30)
+        rdr.wait_for_tag()
+        (error, tag_type) = rdr.request()
+        if not error:
+            (error, uid) = rdr.anticoll()
+            if not error:
+                uid_str = " ".join(str(x) for x in uid)
+                print("Card UID:", uid_str)
+                time.sleep(1)
 
 except KeyboardInterrupt:
-    print("\nExiting...")
+    print("\nExiting")
 
 finally:
-    GPIO.cleanup()
+    rdr.cleanup()

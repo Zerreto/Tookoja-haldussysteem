@@ -1,70 +1,46 @@
 from periphery import GPIO
 import spidev
-from time import sleep, time
+from time import sleep
 
-# Use GPIO chip and line for RST
+# Setup RST
 rst = GPIO("/dev/gpiochip0", 25, "out")
 rst.write(True)
 
-# SPI setup
+# Setup SPI
 spi = spidev.SpiDev()
 spi.open(0, 0)
-spi.max_speed_hz = 100000  # safe for reliable detection
+spi.max_speed_hz = 500000
 
-# RC522 registers and commands
-FIFO, COMMAND, BIT_FRAMING, ERROR_REG = 0x09, 0x01, 0x0D, 0x06
-REQIDL, ANTICOLL = 0x26, 0x93
+# Registers
+FIFO = 0x09
+COMMAND = 0x01
+BIT_FRAMING = 0x0D
+REQIDL = 0x26
+ANTICOLL = 0x93
 
-def write_reg(addr, val):
-    spi.xfer([(addr << 1) & 0x7E, val])
-    print(f"[DEBUG] Write 0x{val:02X} -> Reg 0x{addr:02X}")
+def write_reg(a, v): spi.xfer([(a<<1)&0x7E, v])
+def read_reg(a): return spi.xfer([((a<<1)&0x7E)|0x80,0])[1]
 
-def read_reg(addr):
-    val = spi.xfer([((addr << 1) & 0x7E) | 0x80, 0])[1]
-    print(f"[DEBUG] Read 0x{val:02X} <- Reg 0x{addr:02X}")
-    return val
-
-# Reset reader
+# Simple init
 write_reg(COMMAND, 0x0F)
 sleep(0.05)
-print("[DEBUG] Reader reset done")
 
-last_uid = None
-print("Hold card near reader...")
+print("Hold a card near the reader...")
 
-try:
-    while True:
-        print(f"[DEBUG] Loop start, time={time():.2f}")
+while True:
+    write_reg(BIT_FRAMING, 0x07)
+    write_reg(FIFO, REQIDL)
+    write_reg(COMMAND, 0x0C)
+    sleep(0.05)
+    if read_reg(0x06)==0:  # ERROR_REG == 0 means card detected
+        write_reg(BIT_FRAMING, 0x00)
+        write_reg(FIFO, ANTICOLL)
+        write_reg(COMMAND, 0x0C)
+        sleep(0.05)
+        uid = [read_reg(FIFO) for _ in range(5)]
+        print("Card UID:", uid)
+        break
+    sleep(0.2)
 
-        # Request card
-        write_reg(BIT_FRAMING, 0x07)
-        write_reg(FIFO, REQIDL)
-        write_reg(COMMAND, 0x0C)  # Transceive
-        sleep(0.02)
-
-        error = read_reg(ERROR_REG)
-        print(f"[DEBUG] ERROR_REG = 0x{error:02X}")
-
-        if error == 0:
-            print("[DEBUG] Card detected, reading UID")
-            # Anticollision
-            write_reg(BIT_FRAMING, 0x00)
-            write_reg(FIFO, ANTICOLL)
-            write_reg(COMMAND, 0x0C)
-            sleep(0.02)
-
-            uid = [read_reg(FIFO) for _ in range(5)]
-            print(f"[DEBUG] Raw UID bytes: {uid}")
-
-            if uid != last_uid:
-                print("Card UID:", uid)
-                last_uid = uid
-        else:
-            print("[DEBUG] No card detected")
-            last_uid = None
-
-        sleep(0.05)  # ~20 loops/sec
-except KeyboardInterrupt:
-    spi.close()
-    rst.close()
-    print("Exit.")
+spi.close()
+rst.close()

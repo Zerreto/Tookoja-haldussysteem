@@ -7,7 +7,7 @@ https://newbiely.com/tutorials/raspberry-pi/raspberry-pi-rfid-door-lock
 
 
 import RPi.GPIO as GPIO
-import MFRC522
+from pirc522 import RFID
 import time
 
 # Define GPIO pins

@@ -19,7 +19,7 @@ class App(tk.Tk):
         self.pages = {}
 
         # Register pages
-        for Page in (HomePage, UserPage, BorrowPage, ReturnPage):
+        for Page in (HomePage, UserAuthPage, UserRegPage, UserPage):
             page = Page(self.container, self)
             self.pages[Page] = page
             page.place(relwidth=1, relheight=1)
@@ -41,35 +41,39 @@ class HomePage(tk.Frame):
 
         ttk.Label(self, text="Siit kapist saad töökoja võtme, et kasutada ja laenutada tööriistu kuni 24 tunniks.",
                   wraplength=700, font=("Arial", 16)).pack(pady=40)
-
+        
         ttk.Button(self, text="Kasutaja tuvastamine",
-                   command=lambda: controller.show(UserPage)).pack(pady=10)
+                   command=lambda: controller.show(UserAuthPage)).pack(pady=10)
 
-        ttk.Button(self, text="Tööriistade laenutamine",
-                   command=lambda: controller.show(BorrowPage)).pack(pady=0)
-
-        ttk.Button(self, text="Tööriistade tagastamine",
-                   command=lambda: controller.show(ReturnPage)).pack(pady=0)
+        ttk.Button(self, text="Registreeri uus kasutaja", command=lambda: controller.show(UserRegPage)).pack(pady=0)
 
 
-class UserPage(tk.Frame):
+class UserAuthPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
-        self.controller = controller
 
         ttk.Label(self, text="Kasutaja tuvastamiseks viipa kaarti!",
                   wraplength=700, font=("Arial", 16)).pack(pady=40)
 
-        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
-        self.status_label.pack(pady=20)
-
-        # Keep a reference to the button
-        self.register_button = ttk.Button(self, text="Registreeri uus kasutaja")
-        self.register_button.pack(pady=20)
-
+        
         ttk.Button(self, text="Tagasi avalehele",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
         
+
+class UserRegPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+
+        self.controller = controller
+
+
+
+        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
+        self.status_label.pack(pady=20)
+        
+        ttk.Button(self, text="Tagasi avalehele",
+                   command=lambda: controller.show(HomePage)).pack(pady=20)
+    
     def update_message(self, text):
         self.status_label.config(text=text)
         
@@ -77,27 +81,21 @@ class UserPage(tk.Frame):
     def on_register(self):
         """To be overridden in main.py"""
         pass
-
-
-class BorrowPage(tk.Frame):
+        
+class UserPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
 
-        ttk.Label(self, text="Tööriistade laenutamine",
-                  wraplength=700, font=("Arial", 16)).pack(pady=40)
+        ttk.Button(self, text="Tööriistade laenutamine",
+                   command=lambda: controller.show(BorrowPage)).pack(pady=0)
 
-        ttk.Button(self, text="Tagasi avalehele",
-                   command=lambda: controller.show(HomePage)).pack(pady=20)
-
-
-class ReturnPage(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent)
-
-        ttk.Label(self, text="Tööriistade tagastamine",
-                  wraplength=700, font=("Arial", 16)).pack(pady=40)
-
-        ttk.Button(self, text="Tagasi avalehele",
+        ttk.Button(self, text="Tööriistade tagastamine",
+                   command=lambda: controller.show(ReturnPage)).pack(pady=0)
+        
+        ttk.Button(self, text="Ava võtme kapp",
+                   command=lambda: controller.show(ReturnPage)).pack(pady=0)
+        
+        ttk.Button(self, text="Logi välja",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
 
 

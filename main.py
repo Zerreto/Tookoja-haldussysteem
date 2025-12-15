@@ -15,19 +15,19 @@ def add_user(uid, name):
     conn.close()
 
 def register_user_flow(app, rfid):
-    user_page = app.pages[UserPage]
-    user_page.update_message("Scan a new RFID card...")
+    user_reg_page = app.pages[UserRegPage]
+    user_reg_page.update_message("Scan a new RFID card...")
     uid_bytes = rfid.read_uid()  # blocking read
     if not uid_bytes:
-        user_page.update_message("No card detected.")
+        user_reg_page.update_message("No card detected.")
         return
     uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
     name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
     if not name:
-        user_page.update_message("Registration cancelled.")
+        user_reg_page.update_message("Registration cancelled.")
         return
     add_user(uid_str, name)
-    user_page.update_message(f"User {name} registered with UID {uid_str}!")
+    user_reg_page.update_message(f"User {name} registered with UID {uid_str}!")
 
 
 def main():
@@ -41,10 +41,10 @@ def main():
     #Thread(target=rfid_loop, args=(app, rfid), daemon=True).start()
 
     # Override the UserPage button
-    user_page = app.pages[UserPage]
+    user_reg_page = app.pages[UserRegPage]
 
     # Assign the registration function
-    user_page.register_button.config(command=lambda: register_user_flow(app, rfid))
+    user_reg_page.register_button.config(command=lambda: register_user_flow(app, rfid))
 
     # Run UI loop
     try:

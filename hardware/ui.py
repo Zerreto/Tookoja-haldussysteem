@@ -50,6 +50,10 @@ class App(tk.Tk):
             if rfid:
                 self.pages[BorrowToolPage].start_borrow(self, rfid)
 
+        # Refresh borrowed tools if UserPage
+        if page == UserPage:
+            self.pages[UserPage].update_borrowed_tools()
+
 
 # =========================
 # PAGES

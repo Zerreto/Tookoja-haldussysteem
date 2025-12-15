@@ -180,20 +180,20 @@ class UserAuthPage(tk.Frame):
         self.polling_thread = threading.Thread(target=poll, daemon=True)
         self.polling_thread.start()
 
-def authenticate_user(self, uid_str):
-    """Check if user exists and navigate to UserPage"""
-    from main import get_user_by_uid  # or your DB module
-    user = get_user_by_uid(uid_str)
-    if user:
-        self.update_message(f"Welcome {user[1]}!")
-        
-        # Save the authenticated user UID to App
-        self.controller.current_user_uid = uid_str
+    def authenticate_user(self, uid_str):
+        """Check if user exists and navigate to UserPage"""
+        from main import get_user_by_uid  # or your DB module
+        user = get_user_by_uid(uid_str)
+        if user:
+            self.update_message(f"Welcome {user[1]}!")
+            
+            # Save the authenticated user UID to App
+            self.controller.current_user_uid = uid_str
 
-        # Navigate using controller (your App instance)
-        self.after(500, lambda: self.controller.show(UserPage))
-    else:
-        self.update_message(f"UID {uid_str} not registered.")
+            # Navigate using controller (your App instance)
+            self.after(500, lambda: self.controller.show(UserPage))
+        else:
+            self.update_message(f"UID {uid_str} not registered.")
 
 
         

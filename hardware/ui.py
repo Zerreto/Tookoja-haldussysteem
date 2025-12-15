@@ -60,10 +60,15 @@ class UserPage(tk.Frame):
                   wraplength=700, font=("Arial", 16)).pack(pady=40)
 
         ttk.Button(self, text="Registreeri uus kasutaja",
-                   command=lambda: controller.show(HomePage)).pack(pady=20)
+                   command=self.on_register).pack(pady=20)
 
         ttk.Button(self, text="Tagasi avalehele",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
+        
+    # Placeholder for main.py to connect
+    def on_register(self):
+        """To be overridden in main.py"""
+        pass
 
 
 class BorrowPage(tk.Frame):

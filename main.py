@@ -1,32 +1,34 @@
 from hardware.rfid import RFIDReader
 from hardware.ui import App, UserPage
-#from services.auth import is_authorized
+import sqlite3
 from threading import Thread
 from time import sleep
+from tkinter import simpledialog
 
-# Example: simple list of allowed UIDs
-AUTHORIZED_UIDS = [
-    "DE:AD:BE:EF",
-    "12:34:56:78",
-]
+DB_PATH = "data/users.db"
 
-def is_authorized(uid: str) -> bool:
-    """Check if a UID is authorized."""
-    return uid in AUTHORIZED_UIDS
+def add_user(uid, name):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users (uid, name) VALUES (?, ?)", (uid, name))
+    conn.commit()
+    conn.close()
 
+def register_user_flow(app, rfid):
+    user_page = app.pages[UserPage]
+    user_page.update_message("Scan a new RFID card...")
+    uid_bytes = rfid.read_uid()  # blocking read
+    if not uid_bytes:
+        user_page.update_message("No card detected.")
+        return
+    uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+    name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
+    if not name:
+        user_page.update_message("Registration cancelled.")
+        return
+    add_user(uid_str, name)
+    user_page.update_message(f"User {name} registered with UID {uid_str}!")
 
-def rfid_loop(app, rfid):
-    while True:
-        uid = rfid.read_uid()
-        if uid:
-            uid_str = ":".join(f"{b:02X}" for b in uid)
-            if is_authorized(uid_str):
-                app.show(UserPage)
-                print(f"[ACCESS GRANTED] UID: {uid_str}")
-            else:
-                print(f"[ACCESS DENIED] UID: {uid_str}")
-            sleep(1)
-        sleep(0.1)
 
 def main():
     # Initialize RFID
@@ -37,6 +39,9 @@ def main():
 
     # Start RFID polling in background
     Thread(target=rfid_loop, args=(app, rfid), daemon=True).start()
+
+    # Override the UserPage button
+    app.pages[UserPage].on_register = lambda: register_user_flow(app, rfid)
 
     # Run UI loop
     try:

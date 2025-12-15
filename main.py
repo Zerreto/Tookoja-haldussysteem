@@ -75,7 +75,7 @@ def main():
         rfid = RFIDReader()
     except RuntimeError as e:
         print("RFID init failed:", e)
-        exit(1)
+        raise
 
     # Initialize UI
     app = App()

@@ -29,6 +29,12 @@ class App(tk.Tk):
 
         self.show(HomePage)
 
+    def shutdown(self):
+        for page in self.pages.values():
+            if hasattr(page, "stop_polling"):
+                page.stop_polling = True
+        self.destroy()
+
     def show(self, page):
         self.pages[page].tkraise()
 

@@ -84,12 +84,10 @@ class UserRegPage(tk.Frame):
         self.update()  # force UI update
 
     def go_home(self):
-        # Stop background thread when leaving page
         self.stop_polling = True
         self.controller.show(HomePage)
 
     def start_registration(self, app, rfid):
-        """Start background polling for card detection"""
         self.stop_polling = False
         self.update_message("Scan a new RFID card...")
 
@@ -98,19 +96,23 @@ class UserRegPage(tk.Frame):
                 uid_bytes = rfid.read_uid()
                 if uid_bytes:
                     uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
-                    # Ask for name in main thread
-                    name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
-                    if name:
-                        from main import add_user  # adjust if using a separate db module
-                        add_user(uid_str, name)
-                        self.update_message(f"User {name} registered with UID {uid_str}!")
-                    else:
-                        self.update_message("Registration cancelled.")
-                    break  # stop after successful scan
+                    # Schedule GUI input on main thread
+                    app.after(0, lambda: self.register_user(app, uid_str))
+                    break
                 time.sleep(0.2)
 
         self.polling_thread = threading.Thread(target=poll, daemon=True)
         self.polling_thread.start()
+
+    def register_user(self, app, uid_str):
+        # Ask for name (main thread safe)
+        name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
+        if name:
+            from main import add_user  # adjust if using a separate db module
+            add_user(uid_str, name)
+            self.update_message(f"User {name} registered with UID {uid_str}!")
+        else:
+            self.update_message("Registration cancelled.")
         
 class UserPage(tk.Frame):
     def __init__(self, parent, controller):

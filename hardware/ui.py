@@ -124,6 +124,9 @@ class BorrowToolPage(tk.Frame):
         if tool:
             mark_tool_borrowed(app.current_user_uid, tool_uid)
             self.update_message(f"Tool '{tool[1]}' borrowed successfully!")
+
+            # After short delay, go back to UserPage
+            self.after(1000, lambda: self.controller.show(UserPage))
         else:
             self.update_message(f"Tool UID {tool_uid} not found!")
 

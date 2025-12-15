@@ -29,20 +29,20 @@ class App(tk.Tk):
 
         self.show(HomePage)
 
-def show(self, page):
-    self.pages[page].tkraise()
+    def show(self, page):
+        self.pages[page].tkraise()
 
-    # Start registration if UserRegPage
-    if page == UserRegPage:
-        rfid = getattr(self, "rfid", None)
-        if rfid:
-            self.pages[UserRegPage].start_registration(self, rfid)
+        # Start registration if UserRegPage
+        if page == UserRegPage:
+            rfid = getattr(self, "rfid", None)
+            if rfid:
+                self.pages[UserRegPage].start_registration(self, rfid)
 
-    # Start authentication if UserAuthPage
-    if page == UserAuthPage:
-        rfid = getattr(self, "rfid", None)
-        if rfid:
-            self.pages[UserAuthPage].start_auth(self, rfid)
+        # Start authentication if UserAuthPage
+        if page == UserAuthPage:
+            rfid = getattr(self, "rfid", None)
+            if rfid:
+                self.pages[UserAuthPage].start_auth(self, rfid)
 
 
 # =========================

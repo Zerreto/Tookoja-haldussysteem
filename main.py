@@ -1,5 +1,5 @@
 from hardware.rfid import RFIDReader
-from hardware.ui import App, UserPage
+from hardware.ui import App, UserRegPage
 import sqlite3
 from threading import Thread
 from time import sleep

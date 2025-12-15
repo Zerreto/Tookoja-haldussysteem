@@ -1,22 +1,21 @@
 import spidev
 from periphery import GPIO
 from time import sleep, time
-from threading import Lock
 
 # ===== CONFIG =====
 SPI_BUS = 0
-SPI_DEV = 0          # CE0
-SPI_SPEED = 50000    # Slow for stable debugging
+SPI_DEV = 0  # CE0
+SPI_SPEED = 500_000
 
-RST_GPIO = 25        # BCM
+RST_GPIO = 25
 RST_CHIP = "/dev/gpiochip0"
 
 # ===== RC522 REGISTERS =====
 COMMAND       = 0x01
-COM_IRQ       = 0x04
-ERROR_REG     = 0x06
 FIFO_DATA     = 0x09
 FIFO_LEVEL    = 0x0A
+COM_IRQ       = 0x04
+ERROR_REG     = 0x06
 CONTROL       = 0x0C
 BIT_FRAMING   = 0x0D
 MODE          = 0x11
@@ -36,133 +35,85 @@ TRANSCEIVE = 0x0C
 REQA       = 0x26
 ANTICOLL   = 0x93
 
-class RFIDReader:
+class RC522Debug:
     def __init__(self):
-        self.lock = Lock()
-        sleep(0.3)  # HARD reset delay
-
         self.spi = spidev.SpiDev()
         self.spi.open(SPI_BUS, SPI_DEV)
         self.spi.max_speed_hz = SPI_SPEED
         self.spi.mode = 0
 
         self.rst = GPIO(RST_CHIP, RST_GPIO, "out")
-
         self._reset()
         self._init_rc522()
 
-    # Low-level SPI
     def _write(self, reg, val):
         self.spi.xfer2([(reg << 1) & 0x7E, val])
 
     def _read(self, reg):
-        return self.spi.xfer2([((reg << 1) & 0x7E) | 0x80, 0])[1]
+        val = self.spi.xfer2([((reg << 1) & 0x7E) | 0x80, 0])[1]
+        print(f"READ reg 0x{reg:02X} -> 0x{val:02X}")  # debug
+        return val
 
-    def _set_bits(self, reg, mask):
-        self._write(reg, self._read(reg) | mask)
-
-    def _clear_bits(self, reg, mask):
-        self._write(reg, self._read(reg) & (~mask))
-
-    # Reset and init
     def _reset(self):
         self.rst.write(False)
-        sleep(0.05)
+        sleep(0.2)
         self.rst.write(True)
-        sleep(0.05)
+        sleep(0.2)
         self._write(COMMAND, SOFT_RESET)
-        sleep(0.05)
+        sleep(0.2)
 
     def _antenna_on(self):
         if not (self._read(TX_CONTROL) & 0x03):
-            self._set_bits(TX_CONTROL, 0x03)
+            self._write(TX_CONTROL, 0x03)
 
     def _init_rc522(self):
-        self._write(T_MODE, 0x8D)
-        self._write(T_PRESCALER, 0x3E)
-        self._write(T_RELOAD_L, 30)
-        self._write(T_RELOAD_H, 0)
-        self._write(TX_AUTO, 0x40)
-        self._write(MODE, 0x3D)
-        self._antenna_on()
+        try:
+            self._write(T_MODE, 0x8D)
+            self._write(T_PRESCALER, 0x3E)
+            self._write(T_RELOAD_L, 30)
+            self._write(T_RELOAD_H, 0)
+            self._write(TX_AUTO, 0x40)
+            self._write(MODE, 0x3D)
+            self._antenna_on()
 
-        ver = self._read(VERSION_REG)
-        if ver not in (0x91, 0x92):
-            raise RuntimeError(f"RC522 not detected (VERSION={hex(ver)})")
-        print(f"RC522 detected, VERSION={hex(ver)}")
-
-    # Card communication
-    def _transceive(self, data, timeout=0.1):
-        self._write(COMMAND, IDLE)
-        self._write(COM_IRQ, 0x7F)
-        self._set_bits(FIFO_LEVEL, 0x80)
-
-        for d in data:
-            self._write(FIFO_DATA, d)
-
-        self._write(COMMAND, TRANSCEIVE)
-        self._set_bits(BIT_FRAMING, 0x80)
-
-        start = time()
-        while time() - start < timeout:
-            irq = self._read(COM_IRQ)
-            if irq & 0x30:
-                break
-
-        self._clear_bits(BIT_FRAMING, 0x80)
-
-        if self._read(ERROR_REG) & 0x1B:
-            return None
-
-        length = self._read(FIFO_LEVEL)
-        return [self._read(FIFO_DATA) for _ in range(length)]
+            ver = self._read(VERSION_REG)
+            print(f"VERSION_REG: 0x{ver:02X}")
+            if ver not in (0x91, 0x92):
+                print("WARNING: RC522 not detected or invalid version!")
+        except Exception as e:
+            print("Init error:", e)
 
     def read_uid(self):
-        with self.lock:
-            try:
-                self._antenna_on()
-                self._write(BIT_FRAMING, 0x07)
-                reqa = self._transceive([REQA])
-                print("REQA response:", reqa)
-                if not reqa:
-                    return None
+        self._write(BIT_FRAMING, 0x07)
+        self._write(COM_IRQ, 0x7F)
+        self._write(COMMAND, IDLE)
+        # send REQA
+        self._write(FIFO_DATA, REQA)
+        self._write(COMMAND, TRANSCEIVE)
+        self._write(BIT_FRAMING, 0x80)
+        sleep(0.1)
 
-                self._write(BIT_FRAMING, 0x00)
-                anticoll = self._transceive([ANTICOLL, 0x20])
-                print("ANTICOLL response:", anticoll)
-                if not anticoll or len(anticoll) != 5:
-                    return None
-
-                uid = anticoll[:4]
-                if uid[0] ^ uid[1] ^ uid[2] ^ uid[3] != anticoll[4]:
-                    print("BCC check failed, returning UID anyway")
-                    # return None
-                return uid
-            except Exception as e:
-                print("RC522 read error:", e)
-                self._reset()
-                self._init_rc522()
-                return None
+        length = self._read(FIFO_LEVEL)
+        uid = [self._read(FIFO_DATA) for _ in range(length)]
+        if uid:
+            print("RAW UID:", uid)
+        return uid
 
     def close(self):
         self.spi.close()
         self.rst.close()
 
 
-# ===========================
-# TEST LOOP
-# ===========================
 if __name__ == "__main__":
-    print("Starting RC522 debug test. Press Ctrl+C to exit.")
-    reader = RFIDReader()
+    rc = RC522Debug()
+    print("RC522 debug – press Ctrl+C to exit")
 
     try:
         while True:
-            uid = reader.read_uid()
+            uid = rc.read_uid()
             if uid:
-                print("CARD UID:", ":".join(f"{b:02X}" for b in uid))
-            sleep(0.2)
+                print("UID read:", ":".join(f"{b:02X}" for b in uid))
+            sleep(1)
     except KeyboardInterrupt:
-        print("Exiting...")
-    finally:
-        reader.close()
+        rc.close()
+        print("Exit")

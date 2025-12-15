@@ -71,12 +71,19 @@ def register_user_flow(app, rfid):
 
 def main():
     # Initialize RFID
-    rfid = RFIDReader()
+    try:
+        rfid = RFIDReader()
+    except RuntimeError as e:
+        print("RFID init failed:", e)
+        exit(1)
 
     # Initialize UI
     app = App()
 
     app.rfid = rfid
+
+
+
 
 
     # Run UI loop

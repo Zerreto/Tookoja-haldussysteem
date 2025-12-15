@@ -1,6 +1,7 @@
 import spidev
 from periphery import GPIO
 from time import sleep, time
+from threading import Lock
 
 # ===== CONFIG =====
 SPI_BUS = 0
@@ -38,6 +39,7 @@ ANTICOLL   = 0x93
 
 class RFIDReader:
     def __init__(self):
+        self.lock = Lock()
         self.spi = spidev.SpiDev()
         self.spi.open(SPI_BUS, SPI_DEV)
         self.spi.max_speed_hz = SPI_SPEED
@@ -114,20 +116,21 @@ class RFIDReader:
         return [self._read(FIFO_DATA) for _ in range(length)]
 
     def read_uid(self):
-        self._write(BIT_FRAMING, 0x07)
-        if not self._transceive([REQA]):
-            return None
+        with self.lock:
+            self._write(BIT_FRAMING, 0x07)
+            if not self._transceive([REQA]):
+                return None
 
-        self._write(BIT_FRAMING, 0x00)
-        data = self._transceive([ANTICOLL, 0x20])
-        if not data or len(data) != 5:
-            return None
+            self._write(BIT_FRAMING, 0x00)
+            data = self._transceive([ANTICOLL, 0x20])
+            if not data or len(data) != 5:
+                return None
 
-        uid = data[:4]
-        if uid[0] ^ uid[1] ^ uid[2] ^ uid[3] != data[4]:
-            return None
+            uid = data[:4]
+            if uid[0] ^ uid[1] ^ uid[2] ^ uid[3] != data[4]:
+                return None
 
-        return uid
+            return uid
 
     def close(self):
         self.spi.close()

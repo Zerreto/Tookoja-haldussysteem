@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
+import threading
+import time
+from tkinter import simpledialog
 
 # =========================
 # UI CLASSES
@@ -27,10 +30,7 @@ class App(tk.Tk):
         self.show(HomePage)
 
     def show(self, page):
-        """Bring the selected page to front"""
         self.pages[page].tkraise()
-
-        # Automatically start registration if UserRegPage
         if page == UserRegPage:
             rfid = getattr(self, "rfid", None)
             if rfid:
@@ -70,39 +70,47 @@ class UserRegPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
+        self.polling_thread = None
+        self.stop_polling = False
 
         self.status_label = ttk.Label(self, text="", font=("Arial", 14))
         self.status_label.pack(pady=20)
 
         ttk.Button(self, text="Tagasi avalehele",
-                   command=lambda: controller.show(HomePage)).pack(pady=20)
+                   command=self.go_home).pack(pady=20)
 
     def update_message(self, text):
         self.status_label.config(text=text)
+        self.update()  # force UI update
+
+    def go_home(self):
+        # Stop background thread when leaving page
+        self.stop_polling = True
+        self.controller.show(HomePage)
 
     def start_registration(self, app, rfid):
-        """Automatically start scanning when page is shown"""
+        """Start background polling for card detection"""
+        self.stop_polling = False
         self.update_message("Scan a new RFID card...")
-        app.update()  # refresh UI
 
-        # Blocking read for simplicity
-        uid_bytes = rfid.read_uid()
-        if not uid_bytes:
-            self.update_message("No card detected.")
-            return
-        uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+        def poll():
+            while not self.stop_polling:
+                uid_bytes = rfid.read_uid()
+                if uid_bytes:
+                    uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+                    # Ask for name in main thread
+                    name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
+                    if name:
+                        from main import add_user  # adjust if using a separate db module
+                        add_user(uid_str, name)
+                        self.update_message(f"User {name} registered with UID {uid_str}!")
+                    else:
+                        self.update_message("Registration cancelled.")
+                    break  # stop after successful scan
+                time.sleep(0.2)
 
-        # Ask for user name
-        from tkinter import simpledialog
-        name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
-        if not name:
-            self.update_message("Registration cancelled.")
-            return
-
-        # Save to database
-        from main import add_user  # Or import from your db module
-        add_user(uid_str, name)
-        self.update_message(f"User {name} registered with UID {uid_str}!")
+        self.polling_thread = threading.Thread(target=poll, daemon=True)
+        self.polling_thread.start()
         
 class UserPage(tk.Frame):
     def __init__(self, parent, controller):

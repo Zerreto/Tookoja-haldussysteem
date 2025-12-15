@@ -29,12 +29,20 @@ class App(tk.Tk):
 
         self.show(HomePage)
 
-    def show(self, page):
-        self.pages[page].tkraise()
-        if page == UserRegPage:
-            rfid = getattr(self, "rfid", None)
-            if rfid:
-                self.pages[UserRegPage].start_registration(self, rfid)
+def show(self, page):
+    self.pages[page].tkraise()
+
+    # Start registration if UserRegPage
+    if page == UserRegPage:
+        rfid = getattr(self, "rfid", None)
+        if rfid:
+            self.pages[UserRegPage].start_registration(self, rfid)
+
+    # Start authentication if UserAuthPage
+    if page == UserAuthPage:
+        rfid = getattr(self, "rfid", None)
+        if rfid:
+            self.pages[UserAuthPage].start_auth(self, rfid)
 
 
 # =========================
@@ -57,13 +65,55 @@ class HomePage(tk.Frame):
 class UserAuthPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
+        self.controller = controller
+        self.polling_thread = None
+        self.stop_polling = False
 
         ttk.Label(self, text="Kasutaja tuvastamiseks viipa kaarti!",
                   wraplength=700, font=("Arial", 16)).pack(pady=40)
 
-        
+        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
+        self.status_label.pack(pady=20)
+
         ttk.Button(self, text="Tagasi avalehele",
-                   command=lambda: controller.show(HomePage)).pack(pady=20)
+                   command=self.go_home).pack(pady=20)
+
+    def update_message(self, text):
+        self.status_label.config(text=text)
+        self.update()  # force UI refresh
+
+    def go_home(self):
+        self.stop_polling = True
+        self.controller.show(HomePage)
+
+    def start_auth(self, app, rfid):
+        """Start background polling for user authentication"""
+        self.stop_polling = False
+        self.update_message("Hold your card near the reader...")
+
+        def poll():
+            while not self.stop_polling:
+                uid_bytes = rfid.read_uid()
+                if uid_bytes:
+                    uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+                    # Schedule authentication in main thread
+                    app.after(0, lambda: self.authenticate_user(app, uid_str))
+                    break
+                time.sleep(0.2)
+
+        self.polling_thread = threading.Thread(target=poll, daemon=True)
+        self.polling_thread.start()
+
+    def authenticate_user(self, app, uid_str):
+        """Check if user exists and navigate to UserPage"""
+        from main import get_user_by_uid  # Function to check DB
+        user = get_user_by_uid(uid_str)
+        if user:
+            self.update_message(f"Welcome {user[1]}!")
+            time.sleep(1)
+            self.controller.show(UserPage)
+        else:
+            self.update_message(f"UID {uid_str} not registered.")
         
 
 class UserRegPage(tk.Frame):

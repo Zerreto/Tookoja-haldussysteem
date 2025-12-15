@@ -7,6 +7,14 @@ from tkinter import simpledialog
 
 DB_PATH = "data/users.db"
 
+def get_user_by_uid(uid):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT uid, name FROM users WHERE uid=?", (uid,))
+    result = c.fetchone()
+    conn.close()
+    return result
+
 def add_user(uid, name):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()

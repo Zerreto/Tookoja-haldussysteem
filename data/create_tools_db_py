@@ -38,14 +38,13 @@ CREATE TABLE IF NOT EXISTS borrows (
 )
 """)
 
-"""
 # Preload some tools
 tools = [
-    ('AA:BB:CC:01', 'Screwdriver'),
+    """('AA:BB:CC:01', 'Screwdriver'),
     ('AA:BB:CC:02', 'Hammer'),
-    ('AA:BB:CC:03', 'Pliers'),
+    ('AA:BB:CC:03', 'Pliers'),"""
 ]
-"""
+
 c.executemany("INSERT OR IGNORE INTO tools (uid, name) VALUES (?, ?)", tools)
 
 conn.commit()

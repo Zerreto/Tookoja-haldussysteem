@@ -81,6 +81,8 @@ class BorrowToolPage(tk.Frame):
 
     def go_home(self):
         self.stop_polling = True
+        if self.polling_thread and self.polling_thread.is_alive():
+            self.polling_thread.join(0.1)
         self.controller.show(HomePage)
 
     def start_borrow(self, app, rfid):
@@ -151,6 +153,8 @@ class UserAuthPage(tk.Frame):
 
     def go_home(self):
         self.stop_polling = True
+        if self.polling_thread and self.polling_thread.is_alive():
+            self.polling_thread.join(0.1)
         self.controller.show(HomePage)
 
     def start_auth(self, app, rfid):
@@ -173,15 +177,15 @@ class UserAuthPage(tk.Frame):
         self.polling_thread.start()
 
     def authenticate_user(self, uid_str):
-        """Check if user exists and navigate to UserPage"""
-        from main import get_user_by_uid  # adjust if using separate DB module
+        from main import get_user_by_uid
         user = get_user_by_uid(uid_str)
         if user:
+            self.controller.current_user_uid = uid_str  # <-- Add this
             self.update_message(f"Welcome {user[1]}!")
-            # Navigate using controller (your App instance)
             self.after(1000, lambda: self.controller.show(UserPage))
         else:
             self.update_message(f"UID {uid_str} not registered.")
+
         
 
 class UserRegPage(tk.Frame):

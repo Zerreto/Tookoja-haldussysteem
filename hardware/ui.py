@@ -22,7 +22,7 @@ class App(tk.Tk):
         self.pages = {}
 
         # Register pages
-        for Page in (HomePage, UserAuthPage, UserRegPage, UserPage):
+        for Page in (HomePage, UserAuthPage, UserRegPage, UserPage, BorrowToolPage):
             page = Page(self.container, self)
             self.pages[Page] = page
             page.place(relwidth=1, relheight=1)
@@ -44,10 +44,77 @@ class App(tk.Tk):
             if rfid:
                 self.pages[UserAuthPage].start_auth(self, rfid)
 
+        # Start borrow polling if BorrowToolPage
+        if page == BorrowToolPage:
+            rfid = getattr(self, "rfid", None)
+            if rfid:
+                self.pages[BorrowToolPage].start_borrow(self, rfid)
+
 
 # =========================
 # PAGES
 # =========================
+
+import tkinter as tk
+from tkinter import ttk
+import threading
+import time
+
+class BorrowToolPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
+        self.polling_thread = None
+        self.stop_polling = False
+
+        ttk.Label(self, text="Place the tool near the reader to borrow",
+                  wraplength=700, font=("Arial", 16)).pack(pady=40)
+
+        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
+        self.status_label.pack(pady=20)
+
+        ttk.Button(self, text="Back to Home", command=self.go_home).pack(pady=20)
+
+    def update_message(self, text):
+        self.status_label.config(text=text)
+        self.update()
+
+    def go_home(self):
+        self.stop_polling = True
+        self.controller.show(HomePage)
+
+    def start_borrow(self, app, rfid):
+        """Start polling for a tool RFID"""
+        self.stop_polling = False
+        self.update_message("Scan the tool RFID...")
+
+        def poll():
+            while not self.stop_polling:
+                uid_bytes = rfid.read_uid()
+                if uid_bytes:
+                    uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+                    app.after(0, lambda: self.borrow_tool(app, uid_str))
+                    break
+                time.sleep(0.2)
+
+        self.polling_thread = threading.Thread(target=poll, daemon=True)
+        self.polling_thread.start()
+
+    def borrow_tool(self, app, tool_uid):
+        """Check tool in DB and mark as borrowed by current user"""
+        from main import get_tool_by_uid, mark_tool_borrowed
+
+        if not getattr(app, "current_user_uid", None):
+            self.update_message("No authenticated user!")
+            return
+
+        tool = get_tool_by_uid(tool_uid)
+        if tool:
+            mark_tool_borrowed(app.current_user_uid, tool_uid)
+            self.update_message(f"Tool '{tool[1]}' borrowed successfully!")
+        else:
+            self.update_message(f"Tool UID {tool_uid} not found!")
+
 
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
@@ -168,19 +235,34 @@ class UserRegPage(tk.Frame):
 class UserPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
+        self.controller = controller
 
-        
-        #ttk.Button(self, text="Tööriistade laenutamine",
-         #          command=lambda: controller.show(BorrowPage)).pack(pady=0)
+        ttk.Label(self, text="Welcome! Here are your borrowed tools:", font=("Arial", 16)).pack(pady=20)
 
-        #ttk.Button(self, text="Tööriistade tagastamine",
-          #         command=lambda: controller.show(ReturnPage)).pack(pady=0)
-        
-        #ttk.Button(self, text="Ava võtme kapp",
-         #          command=lambda: controller.show(ReturnPage)).pack(pady=0)
-        
-        ttk.Button(self, text="Logi välja",
-                   command=lambda: controller.show(HomePage)).pack(pady=20)
+        # Listbox to show borrowed tools
+        self.tool_listbox = tk.Listbox(self, width=50, height=10, font=("Arial", 14))
+        self.tool_listbox.pack(pady=10)
+
+        ttk.Button(self, text="Borrow Tool",
+                   command=lambda: controller.show(BorrowToolPage)).pack(pady=10)
+
+        ttk.Button(self, text="Log Out", command=lambda: controller.show(HomePage)).pack(pady=10)
+
+    def update_borrowed_tools(self):
+        """Fetch and display borrowed tools for the current user."""
+        self.tool_listbox.delete(0, tk.END)
+        uid = getattr(self.controller, "current_user_uid", None)
+        if uid:
+            from main import get_borrowed_tools
+            tools = get_borrowed_tools(uid)
+            if tools:
+                for name, tool_uid in tools:
+                    self.tool_listbox.insert(tk.END, f"{name} ({tool_uid})")
+            else:
+                self.tool_listbox.insert(tk.END, "No tools borrowed.")
+        else:
+            self.tool_listbox.insert(tk.END, "No user logged in.")
+
 
 
 # =========================

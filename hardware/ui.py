@@ -30,6 +30,12 @@ class App(tk.Tk):
         """Bring the selected page to front"""
         self.pages[page].tkraise()
 
+        # Automatically start registration if UserRegPage
+        if page == UserRegPage:
+            rfid = getattr(self, "rfid", None)
+            if rfid:
+                self.pages[UserRegPage].start_registration(self, rfid)
+
 
 # =========================
 # PAGES
@@ -63,26 +69,40 @@ class UserAuthPage(tk.Frame):
 class UserRegPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
-
         self.controller = controller
 
         self.status_label = ttk.Label(self, text="", font=("Arial", 14))
         self.status_label.pack(pady=20)
 
-         # Create the button and save reference
-        self.register_button = ttk.Button(self, text="Alusta registreerimist")
-        self.register_button.pack(pady=20)
-        
         ttk.Button(self, text="Tagasi avalehele",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
-    
+
     def update_message(self, text):
         self.status_label.config(text=text)
-        
-    # Placeholder for main.py to connect
-    def on_register(self):
-        """To be overridden in main.py"""
-        pass
+
+    def start_registration(self, app, rfid):
+        """Automatically start scanning when page is shown"""
+        self.update_message("Scan a new RFID card...")
+        app.update()  # refresh UI
+
+        # Blocking read for simplicity
+        uid_bytes = rfid.read_uid()
+        if not uid_bytes:
+            self.update_message("No card detected.")
+            return
+        uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+
+        # Ask for user name
+        from tkinter import simpledialog
+        name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
+        if not name:
+            self.update_message("Registration cancelled.")
+            return
+
+        # Save to database
+        from main import add_user  # Or import from your db module
+        add_user(uid_str, name)
+        self.update_message(f"User {name} registered with UID {uid_str}!")
         
 class UserPage(tk.Frame):
     def __init__(self, parent, controller):

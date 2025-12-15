@@ -37,14 +37,8 @@ def main():
     # Initialize UI
     app = App()
 
-    # Start RFID polling in background
-    #Thread(target=rfid_loop, args=(app, rfid), daemon=True).start()
+    app.rfid = rfid
 
-    # Override the UserPage button
-    user_reg_page = app.pages[UserRegPage]
-
-    # Assign the registration function
-    user_reg_page.register_button.config(command=lambda: register_user_flow(app, rfid))
 
     # Run UI loop
     try:

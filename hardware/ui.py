@@ -66,10 +66,12 @@ class UserRegPage(tk.Frame):
 
         self.controller = controller
 
-
-
         self.status_label = ttk.Label(self, text="", font=("Arial", 14))
         self.status_label.pack(pady=20)
+
+         # Create the button and save reference
+        self.register_button = ttk.Button(self, text="Alusta registreerimist")
+        self.register_button.pack(pady=20)
         
         ttk.Button(self, text="Tagasi avalehele",
                    command=lambda: controller.show(HomePage)).pack(pady=20)
@@ -86,14 +88,15 @@ class UserPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
 
-        ttk.Button(self, text="Tööriistade laenutamine",
-                   command=lambda: controller.show(BorrowPage)).pack(pady=0)
-
-        ttk.Button(self, text="Tööriistade tagastamine",
-                   command=lambda: controller.show(ReturnPage)).pack(pady=0)
         
-        ttk.Button(self, text="Ava võtme kapp",
-                   command=lambda: controller.show(ReturnPage)).pack(pady=0)
+        #ttk.Button(self, text="Tööriistade laenutamine",
+         #          command=lambda: controller.show(BorrowPage)).pack(pady=0)
+
+        #ttk.Button(self, text="Tööriistade tagastamine",
+          #         command=lambda: controller.show(ReturnPage)).pack(pady=0)
+        
+        #ttk.Button(self, text="Ava võtme kapp",
+         #          command=lambda: controller.show(ReturnPage)).pack(pady=0)
         
         ttk.Button(self, text="Logi välja",
                    command=lambda: controller.show(HomePage)).pack(pady=20)

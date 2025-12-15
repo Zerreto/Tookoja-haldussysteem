@@ -55,15 +55,17 @@ class HomePage(tk.Frame):
 class UserPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
+        self.controller = controller
 
         ttk.Label(self, text="Kasutaja tuvastamiseks viipa kaarti!",
                   wraplength=700, font=("Arial", 16)).pack(pady=40)
-        
+
         self.status_label = ttk.Label(self, text="", font=("Arial", 14))
         self.status_label.pack(pady=20)
 
-        self.register_button = ttk.Button(self, text="Registreeri uus kasutaja",
-                   command=self.on_register).pack(pady=20)
+        # Keep a reference to the button
+        self.register_button = ttk.Button(self, text="Registreeri uus kasutaja")
+        self.register_button.pack(pady=20)
 
         ttk.Button(self, text="Tagasi avalehele",
                    command=lambda: controller.show(HomePage)).pack(pady=20)

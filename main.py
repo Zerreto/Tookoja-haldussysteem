@@ -41,7 +41,10 @@ def main():
     #Thread(target=rfid_loop, args=(app, rfid), daemon=True).start()
 
     # Override the UserPage button
-    app.pages[UserPage].register_button.config(command=lambda: register_user_flow(app, rfid))
+    user_page = app.pages[UserPage]
+
+    # Assign the registration function
+    user_page.register_button.config(command=lambda: register_user_flow(app, rfid))
 
     # Run UI loop
     try:

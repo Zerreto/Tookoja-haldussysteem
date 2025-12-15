@@ -246,9 +246,15 @@ class UserRegPage(tk.Frame):
         # Ask for name (main thread safe)
         name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
         if name:
-            from main import add_user  # adjust if using a separate db module
+            from main import add_user
             add_user(uid_str, name)
             self.update_message(f"User {name} registered with UID {uid_str}!")
+
+            # Save UID as current user
+            self.controller.current_user_uid = uid_str
+
+            # Automatically go to UserPage
+            self.after(500, lambda: self.controller.show(UserPage))
         else:
             self.update_message("Registration cancelled.")
         

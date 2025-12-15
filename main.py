@@ -1,12 +1,35 @@
+"""
+Name: Töökoja haldussüsteem
+Kirjeldus: Main script for borrowing tools using RFID and opening a solenoid lock.
+Autor: Helar Pullisaar
+Date: 04.12.2025
+Version: 1.0
+"""
+
+# Import necessary modules
 from hardware.rfid import RFIDReader
 from hardware.ui import App, UserRegPage
 import sqlite3
 from threading import Thread
 from time import sleep
 from tkinter import simpledialog
+from periphery import GPIO
 
+# Database paths
 USER_DB_PATH = "data/users.db"
 TOOLS_DB_PATH = "data/tools.db"
+
+LOCK_PIN = 18  # GPIO pin for solenoid lock
+
+# Initialize GPIO once
+lock_gpio = GPIO(f"/dev/gpiochip0", LOCK_PIN, "out")
+lock_gpio.write(False)  # default LOW = locked
+
+def open_lock(duration=5):
+    """Activate solenoid to unlock for a short duration (seconds)."""
+    lock_gpio.write(True)   # energize solenoid
+    sleep(duration)         # keep lock open
+    lock_gpio.write(False)  # lock again
 
 def get_borrowed_tools(user_uid):
     """Return a list of tools currently borrowed by the user."""
@@ -54,7 +77,7 @@ def add_user(uid, name):
     conn.close()
 
 
-
+# Main program logic
 def main():
     # Initialize RFID
     try:
@@ -67,10 +90,6 @@ def main():
     app = App()
 
     app.rfid = rfid
-
-
-
-
 
     # Run UI loop
     try:

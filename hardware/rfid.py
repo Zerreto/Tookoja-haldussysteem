@@ -1,3 +1,11 @@
+"""
+Name: MFRC522 RFID Reader
+Kirjeldus: Script for reading data from RFID reader (MFRC522 module).
+Autor: Helar Pullisaar
+Date: 04.12.2025
+Version: 1.0
+"""
+
 import spidev
 from periphery import GPIO
 from time import sleep, time

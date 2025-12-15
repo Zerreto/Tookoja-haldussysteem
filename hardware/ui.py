@@ -1,3 +1,12 @@
+"""
+Name: Töökoja haldussüsteem UI
+Kirjeldus: Script for UI.
+Autor: Helar Pullisaar
+Date: 04.12.2025
+Version: 1.0
+"""
+
+# Import necessary modules
 import tkinter as tk
 from tkinter import ttk
 import threading
@@ -9,11 +18,12 @@ from tkinter import simpledialog
 # =========================
 
 class App(tk.Tk):
+    # Initialize the main application window
     def __init__(self):
         super().__init__()
 
         self.title("Tookoja haldusysteem")
-        self.geometry("800x480")
+        self.geometry("800x480") #Window size
 
         # Container for all pages
         self.container = tk.Frame(self)
@@ -65,72 +75,7 @@ class App(tk.Tk):
 # PAGES
 # =========================
 
-import tkinter as tk
-from tkinter import ttk
-import threading
-import time
-
-class BorrowToolPage(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent)
-        self.controller = controller
-        self.polling_thread = None
-        self.stop_polling = False
-
-        ttk.Label(self, text="Place the tool near the reader to borrow",
-                  wraplength=700, font=("Arial", 16)).pack(pady=40)
-
-        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
-        self.status_label.pack(pady=20)
-
-        ttk.Button(self, text="Back to Home", command=self.go_home).pack(pady=20)
-
-    def update_message(self, text):
-        self.status_label.config(text=text)
-        self.update()
-
-    def go_home(self):
-        self.stop_polling = True
-        if self.polling_thread and self.polling_thread.is_alive():
-            self.polling_thread.join(0.1)
-        self.controller.show(HomePage)
-
-    def start_borrow(self, app, rfid):
-        """Start polling for a tool RFID"""
-        self.stop_polling = False
-        self.update_message("Scan the tool RFID...")
-
-        def poll():
-            while not self.stop_polling:
-                uid_bytes = rfid.read_uid()
-                if uid_bytes:
-                    uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
-                    app.after(0, lambda: self.borrow_tool(app, uid_str))
-                    break
-                time.sleep(0.2)
-
-        self.polling_thread = threading.Thread(target=poll, daemon=True)
-        self.polling_thread.start()
-
-    def borrow_tool(self, app, tool_uid):
-        """Check tool in DB and mark as borrowed by current user"""
-        from main import get_tool_by_uid, mark_tool_borrowed
-
-        if not getattr(app, "current_user_uid", None):
-            self.update_message("No authenticated user!")
-            return
-
-        tool = get_tool_by_uid(tool_uid)
-        if tool:
-            mark_tool_borrowed(app.current_user_uid, tool_uid)
-            self.update_message(f"Tool '{tool[1]}' borrowed successfully!")
-
-            # After short delay, go back to UserPage
-            self.after(1000, lambda: self.controller.show(UserPage))
-        else:
-            self.update_message(f"Tool UID {tool_uid} not found!")
-
-
+# Home Page
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
@@ -143,7 +88,7 @@ class HomePage(tk.Frame):
 
         ttk.Button(self, text="Registreeri uus kasutaja", command=lambda: controller.show(UserRegPage)).pack(pady=0)
 
-
+# User Authentication Page
 class UserAuthPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
@@ -204,9 +149,8 @@ class UserAuthPage(tk.Frame):
         else:
             self.update_message(f"UID {uid_str} not registered.")
 
-
         
-
+# New User Registration Page
 class UserRegPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
@@ -261,6 +205,8 @@ class UserRegPage(tk.Frame):
         else:
             self.update_message("Registration cancelled.")
         
+
+# User Main Page        
 class UserPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
@@ -276,6 +222,24 @@ class UserPage(tk.Frame):
                    command=lambda: controller.show(BorrowToolPage)).pack(pady=10)
 
         ttk.Button(self, text="Log Out", command=lambda: controller.show(HomePage)).pack(pady=10)
+
+        ttk.Button(self, text="Open Lock", command=self.trigger_lock).pack(pady=10)
+
+    def trigger_lock(self):
+        """Open solenoid lock once user is authenticated."""
+        current_user_uid = getattr(self.controller, "current_user_uid", None)
+        if not current_user_uid:
+            self.update_message("No authenticated user! Cannot open lock.")
+            return
+
+        import threading
+        threading.Thread(target=self._lock_thread, daemon=True).start()
+
+    def _lock_thread(self):
+        from main import open_lock
+        self.update_message("Opening lock...")
+        open_lock(duration=5)  # <--- now 5 seconds
+        self.update_message("Lock closed.")
 
     def update_borrowed_tools(self):
         """Fetch and display borrowed tools for the current user."""
@@ -347,6 +311,66 @@ class UserPage(tk.Frame):
             self.status_label.pack(pady=10)
         self.update()
 
+# Borrow Tool Page
+class BorrowToolPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
+        self.polling_thread = None
+        self.stop_polling = False
+
+        ttk.Label(self, text="Place the tool near the reader to borrow",
+                  wraplength=700, font=("Arial", 16)).pack(pady=40)
+
+        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
+        self.status_label.pack(pady=20)
+
+        ttk.Button(self, text="Back to Home", command=self.go_home).pack(pady=20)
+
+    def update_message(self, text):
+        self.status_label.config(text=text)
+        self.update()
+
+    def go_home(self):
+        self.stop_polling = True
+        if self.polling_thread and self.polling_thread.is_alive():
+            self.polling_thread.join(0.1)
+        self.controller.show(HomePage)
+
+    def start_borrow(self, app, rfid):
+        """Start polling for a tool RFID"""
+        self.stop_polling = False
+        self.update_message("Scan the tool RFID...")
+
+        def poll():
+            while not self.stop_polling:
+                uid_bytes = rfid.read_uid()
+                if uid_bytes:
+                    uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
+                    app.after(0, lambda: self.borrow_tool(app, uid_str))
+                    break
+                time.sleep(0.2)
+
+        self.polling_thread = threading.Thread(target=poll, daemon=True)
+        self.polling_thread.start()
+
+    def borrow_tool(self, app, tool_uid):
+        """Check tool in DB and mark as borrowed by current user"""
+        from main import get_tool_by_uid, mark_tool_borrowed
+
+        if not getattr(app, "current_user_uid", None):
+            self.update_message("No authenticated user!")
+            return
+
+        tool = get_tool_by_uid(tool_uid)
+        if tool:
+            mark_tool_borrowed(app.current_user_uid, tool_uid)
+            self.update_message(f"Tool '{tool[1]}' borrowed successfully!")
+
+            # After short delay, go back to UserPage
+            self.after(1000, lambda: self.controller.show(UserPage))
+        else:
+            self.update_message(f"Tool UID {tool_uid} not found!")
 
 
 # =========================

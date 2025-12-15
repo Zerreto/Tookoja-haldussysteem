@@ -1,3 +1,11 @@
+"""
+Name: Tool Registration Script
+Kirjeldus: Script for registering tools with RFID tags into a SQLite database.
+Autor: Helar Pullisaar
+Date: 04.12.2025
+Version: 1.0
+"""
+
 import sqlite3
 from hardware.rfid import RFIDReader
 from tkinter import Tk, simpledialog

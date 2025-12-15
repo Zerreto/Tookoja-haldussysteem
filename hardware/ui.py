@@ -97,21 +97,22 @@ class UserAuthPage(tk.Frame):
                 if uid_bytes:
                     uid_str = ":".join(f"{b:02X}" for b in uid_bytes)
                     # Schedule authentication in main thread
-                    app.after(0, lambda: self.authenticate_user(app, uid_str))
+                    # Use self.controller.show() instead of app.show()
+                    self.after(0, lambda: self.authenticate_user(uid_str))
                     break
                 time.sleep(0.2)
 
         self.polling_thread = threading.Thread(target=poll, daemon=True)
         self.polling_thread.start()
 
-    def authenticate_user(self, app, uid_str):
+    def authenticate_user(self, uid_str):
         """Check if user exists and navigate to UserPage"""
-        from main import get_user_by_uid  # Function to check DB
+        from main import get_user_by_uid  # adjust if using separate DB module
         user = get_user_by_uid(uid_str)
         if user:
             self.update_message(f"Welcome {user[1]}!")
-            time.sleep(1)
-            self.controller.show(UserPage)
+            # Navigate using controller (your App instance)
+            self.after(1000, lambda: self.controller.show(UserPage))
         else:
             self.update_message(f"UID {uid_str} not registered.")
         

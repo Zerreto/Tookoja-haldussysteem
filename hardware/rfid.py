@@ -39,7 +39,9 @@ ANTICOLL   = 0x93
 
 class RFIDReader:
     def __init__(self):
-        self.lock = Lock()
+        # HARD reset delay for RC522 power-up
+        sleep(0.3)
+
         self.spi = spidev.SpiDev()
         self.spi.open(SPI_BUS, SPI_DEV)
         self.spi.max_speed_hz = SPI_SPEED

@@ -10,7 +10,7 @@ TOOLS_DB_PATH = "data/tools.db"
 
 def get_borrowed_tools(user_uid):
     """Return a list of tools currently borrowed by the user."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(TOOLS_DB_PATH)
     c = conn.cursor()
     # Only show borrows that have no return_time
     c.execute("""

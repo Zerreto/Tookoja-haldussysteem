@@ -38,7 +38,7 @@ def main():
     app = App()
 
     # Start RFID polling in background
-    Thread(target=rfid_loop, args=(app, rfid), daemon=True).start()
+    #Thread(target=rfid_loop, args=(app, rfid), daemon=True).start()
 
     # Override the UserPage button
     app.pages[UserPage].on_register = lambda: register_user_flow(app, rfid)

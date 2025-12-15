@@ -59,12 +59,13 @@ class RC522Test:
         self._write(reg, self._read(reg) & (~mask))
 
     def _reset(self):
+        sleep(0.5)
         self.rst.write(False)
-        sleep(0.05)
+        sleep(0.5)
         self.rst.write(True)
-        sleep(0.05)
+        sleep(0.5)
         self._write(COMMAND, SOFT_RESET)
-        sleep(0.05)
+        sleep(0.55)
 
     def _antenna_on(self):
         if not (self._read(TX_CONTROL) & 0x03):

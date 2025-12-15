@@ -6,7 +6,7 @@ from threading import Lock
 # ===== CONFIG =====
 SPI_BUS = 0
 SPI_DEV = 0          # CE0
-SPI_SPEED = 500_000
+SPI_SPEED = 100_000
 
 RST_GPIO = 25        # BCM
 RST_CHIP = "/dev/gpiochip0"
@@ -41,6 +41,8 @@ class RFIDReader:
     def __init__(self):
         # HARD reset delay for RC522 power-up
         sleep(0.3)
+
+        self.lock = Lock()
 
         self.spi = spidev.SpiDev()
         self.spi.open(SPI_BUS, SPI_DEV)
@@ -88,7 +90,7 @@ class RFIDReader:
         self._antenna_on()
 
         ver = self._read(VERSION_REG)
-        if ver not in (0x91, 0x92):
+        if ver in (0x00, 0xFF):
             raise RuntimeError(f"RC522 not detected (VERSION={hex(ver)})")
 
     # ===== CARD OPS =====

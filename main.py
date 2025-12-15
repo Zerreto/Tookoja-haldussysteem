@@ -1,8 +1,19 @@
 from hardware.rfid import RFIDReader
 from hardware.ui import App, UserPage
-from services.auth import is_authorized
+#from services.auth import is_authorized
 from threading import Thread
 from time import sleep
+
+# Example: simple list of allowed UIDs
+AUTHORIZED_UIDS = [
+    "DE:AD:BE:EF",
+    "12:34:56:78",
+]
+
+def is_authorized(uid: str) -> bool:
+    """Check if a UID is authorized."""
+    return uid in AUTHORIZED_UIDS
+
 
 def rfid_loop(app, rfid):
     while True:

@@ -279,6 +279,11 @@ class UserPage(tk.Frame):
 
     def update_borrowed_tools(self):
         """Fetch and display borrowed tools for the current user."""
+        # Remove previous return buttons
+        for widget in self.winfo_children():
+            if isinstance(widget, tk.Button) and hasattr(widget, "is_return_button"):
+                widget.destroy()
+
         self.tool_listbox.delete(0, tk.END)
         uid = getattr(self.controller, "current_user_uid", None)
         if uid:
@@ -287,10 +292,60 @@ class UserPage(tk.Frame):
             if tools:
                 for name, tool_uid in tools:
                     self.tool_listbox.insert(tk.END, f"{name} ({tool_uid})")
+                    
+                    # Return button for each borrowed tool
+                    btn = tk.Button(self, text=f"Return '{name}'", font=("Arial", 12),
+                                    command=lambda t_uid=tool_uid: self.request_return_tool(t_uid))
+                    btn.is_return_button = True
+                    btn.pack(pady=2)
             else:
                 self.tool_listbox.insert(tk.END, "No tools borrowed.")
         else:
             self.tool_listbox.insert(tk.END, "No user logged in.")
+
+    def request_return_tool(self, tool_uid):
+        """Prompt user to scan RFID to verify identity before returning a tool."""
+        self.update_message("Scan your card to return the tool...")
+
+        def poll_rfid():
+            rfid = getattr(self.controller, "rfid", None)
+            if not rfid:
+                self.update_message("RFID reader not available.")
+                return
+
+            scanned_uid = None
+            while scanned_uid is None:
+                uid_bytes = rfid.read_uid()
+                if uid_bytes:
+                    scanned_uid = ":".join(f"{b:02X}" for b in uid_bytes)
+                else:
+                    time.sleep(0.2)
+
+            # After scanning, process in main thread
+            self.after(0, lambda: self.verify_and_return(tool_uid, scanned_uid))
+
+        threading.Thread(target=poll_rfid, daemon=True).start()
+
+    def verify_and_return(self, tool_uid, scanned_uid):
+        """Check if scanned UID matches logged-in user before returning tool."""
+        current_user_uid = getattr(self.controller, "current_user_uid", None)
+        if scanned_uid != current_user_uid:
+            self.update_message(f"UID mismatch! Cannot return tool.")
+            return
+
+        from main import mark_tool_returned
+        mark_tool_returned(current_user_uid, tool_uid)
+        self.update_message(f"Tool returned successfully!")
+        self.update_borrowed_tools()
+
+    def update_message(self, text):
+        """Optional status label for messages"""
+        if hasattr(self, "status_label"):
+            self.status_label.config(text=text)
+        else:
+            self.status_label = ttk.Label(self, text=text, font=("Arial", 14))
+            self.status_label.pack(pady=10)
+        self.update()
 
 
 

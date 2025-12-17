@@ -212,104 +212,117 @@ class UserPage(tk.Frame):
         super().__init__(parent)
         self.controller = controller
 
-        ttk.Label(self, text="Welcome! Here are your borrowed tools:", font=("Arial", 16)).pack(pady=20)
+        ttk.Label(
+            self,
+            text="Your borrowed tools:",
+            font=("Arial", 16)
+        ).pack(pady=20)
 
-        # Listbox to show borrowed tools
-        self.tool_listbox = tk.Listbox(self, width=50, height=10, font=("Arial", 14))
+        self.status_label = ttk.Label(self, text="", font=("Arial", 14))
+        self.status_label.pack(pady=5)
+
+        self.tool_listbox = tk.Listbox(
+            self, width=50, height=8, font=("Arial", 14)
+        )
         self.tool_listbox.pack(pady=10)
 
-        ttk.Button(self, text="Borrow Tool",
-                   command=lambda: controller.show(BorrowToolPage)).pack(pady=10)
+        ttk.Button(
+            self, text="Borrow Tool",
+            command=lambda: controller.show(BorrowToolPage)
+        ).pack(pady=5)
 
-        ttk.Button(self, text="Log Out", command=lambda: controller.show(HomePage)).pack(pady=10)
+        ttk.Button(
+            self, text="Log Out",
+            command=lambda: controller.show(HomePage)
+        ).pack(pady=5)
 
-        ttk.Button(self, text="Open Lock", command=self.trigger_lock).pack(pady=10)
+    # -------------------------
+    # UI helpers
+    # -------------------------
+    def update_message(self, text):
+        self.status_label.config(text=text)
+        self.update_idletasks()
 
-    def trigger_lock(self):
-        """Open solenoid lock once user is authenticated."""
-        current_user_uid = getattr(self.controller, "current_user_uid", None)
-        if not current_user_uid:
-            self.update_message("No authenticated user! Cannot open lock.")
-            return
-
-        import threading
-        threading.Thread(target=self._lock_thread, daemon=True).start()
-
-    def _lock_thread(self):
-        from main import open_lock
-        self.update_message("Opening lock...")
-        open_lock(duration=5)  # <--- now 5 seconds
-        self.update_message("Lock closed.")
-
+    # -------------------------
+    # Borrowed tools listing
+    # -------------------------
     def update_borrowed_tools(self):
-        """Fetch and display borrowed tools for the current user."""
-        # Remove previous return buttons
+        # Remove old return buttons
         for widget in self.winfo_children():
             if isinstance(widget, tk.Button) and hasattr(widget, "is_return_button"):
                 widget.destroy()
 
         self.tool_listbox.delete(0, tk.END)
-        uid = getattr(self.controller, "current_user_uid", None)
-        if uid:
-            from main import get_borrowed_tools
-            tools = get_borrowed_tools(uid)
-            if tools:
-                for name, tool_uid in tools:
-                    self.tool_listbox.insert(tk.END, f"{name} ({tool_uid})")
-                    
-                    # Return button for each borrowed tool
-                    btn = tk.Button(self, text=f"Return '{name}'", font=("Arial", 12),
-                                    command=lambda t_uid=tool_uid: self.request_return_tool(t_uid))
-                    btn.is_return_button = True
-                    btn.pack(pady=2)
-            else:
-                self.tool_listbox.insert(tk.END, "No tools borrowed.")
-        else:
+
+        user_uid = getattr(self.controller, "current_user_uid", None)
+        if not user_uid:
             self.tool_listbox.insert(tk.END, "No user logged in.")
+            return
 
-    def request_return_tool(self, tool_uid):
-        """Prompt user to scan RFID to verify identity before returning a tool."""
-        self.update_message("Scan your card to return the tool...")
+        from main import get_borrowed_tools
+        tools = get_borrowed_tools(user_uid)
 
-        def poll_rfid():
+        if not tools:
+            self.tool_listbox.insert(tk.END, "No tools borrowed.")
+            return
+
+        for name, tool_uid in tools:
+            self.tool_listbox.insert(
+                tk.END, f"{name} ({tool_uid})"
+            )
+
+            btn = tk.Button(
+                self,
+                text="Return",
+                font=("Arial", 12),
+                command=lambda t_uid=tool_uid: self.request_tool_return(t_uid)
+            )
+            btn.is_return_button = True
+            btn.pack(pady=2)
+
+    # -------------------------
+    # Tool return flow
+    # -------------------------
+    def request_tool_return(self, expected_tool_uid):
+        self.update_message("Scan the TOOL to return it...")
+
+        # Disable return buttons while waiting
+        for widget in self.winfo_children():
+            if isinstance(widget, tk.Button) and hasattr(widget, "is_return_button"):
+                widget.config(state="disabled")
+
+        def poll():
             rfid = getattr(self.controller, "rfid", None)
             if not rfid:
-                self.update_message("RFID reader not available.")
+                self.after(0, lambda: self.update_message("RFID not available"))
                 return
 
-            scanned_uid = None
-            while scanned_uid is None:
+            while True:
                 uid_bytes = rfid.read_uid()
                 if uid_bytes:
                     scanned_uid = ":".join(f"{b:02X}" for b in uid_bytes)
-                else:
-                    time.sleep(0.2)
+                    self.after(
+                        0,
+                        lambda: self.verify_tool_return(expected_tool_uid, scanned_uid)
+                    )
+                    break
+                time.sleep(0.2)
 
-            # After scanning, process in main thread
-            self.after(0, lambda: self.verify_and_return(tool_uid, scanned_uid))
+        threading.Thread(target=poll, daemon=True).start()
 
-        threading.Thread(target=poll_rfid, daemon=True).start()
-
-    def verify_and_return(self, tool_uid, scanned_uid):
-        """Check if scanned UID matches logged-in user before returning tool."""
-        current_user_uid = getattr(self.controller, "current_user_uid", None)
-        if scanned_uid != current_user_uid:
-            self.update_message(f"UID mismatch! Cannot return tool.")
+    def verify_tool_return(self, expected_tool_uid, scanned_uid):
+        if scanned_uid != expected_tool_uid:
+            self.update_message("Wrong tool scanned! Try again.")
+            self.update_borrowed_tools()
             return
 
         from main import mark_tool_returned
-        mark_tool_returned(current_user_uid, tool_uid)
-        self.update_message(f"Tool returned successfully!")
+        user_uid = self.controller.current_user_uid
+
+        mark_tool_returned(user_uid, expected_tool_uid)
+        self.update_message("Tool returned successfully!")
         self.update_borrowed_tools()
 
-    def update_message(self, text):
-        """Optional status label for messages"""
-        if hasattr(self, "status_label"):
-            self.status_label.config(text=text)
-        else:
-            self.status_label = ttk.Label(self, text=text, font=("Arial", 14))
-            self.status_label.pack(pady=10)
-        self.update()
 
 # Borrow Tool Page
 class BorrowToolPage(tk.Frame):

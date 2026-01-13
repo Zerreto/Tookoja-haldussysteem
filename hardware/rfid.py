@@ -16,9 +16,6 @@ SPI_BUS = 0
 SPI_DEV = 0          # CE0
 SPI_SPEED = 100_000
 
-RST_GPIO = 25        # BCM
-RST_CHIP = "/dev/gpiochip0"
-
 # ===== RC522 REGISTERS =====
 COMMAND       = 0x01
 COM_IRQ       = 0x04
@@ -53,13 +50,13 @@ class RFIDReader:
         self.lock = Lock()
 
         self.spi = spidev.SpiDev()
-        self.spi.open(SPI_BUS, SPI_DEV)
+        self.spi.open(bus=SPI_BUS, device=SPI_DEV)
         self.spi.max_speed_hz = SPI_SPEED
-        self.spi.mode = 0
+        #self.spi.mode = 0
 
-        self.rst = GPIO(RST_CHIP, RST_GPIO, "out")
+        #self.rst = GPIO(RST_CHIP, RST_GPIO, "out")
 
-        self._reset()
+        #self._reset()
         self._init_rc522()
 
     # ===== LOW LEVEL =====
@@ -77,18 +74,14 @@ class RFIDReader:
 
     # ===== INIT =====
     def _reset(self):
-        self.rst.write(False)
-        sleep(0.05)
-        self.rst.write(True)
-        sleep(0.05)
-        self._write(COMMAND, SOFT_RESET)
-        sleep(0.05)
+        self._write(0x01, 0x0F)
 
     def _antenna_on(self):
         if not (self._read(TX_CONTROL) & 0x03):
             self._set_bits(TX_CONTROL, 0x03)
 
     def _init_rc522(self):
+        self._reset()
         self._write(T_MODE, 0x8D)
         self._write(T_PRESCALER, 0x3E)
         self._write(T_RELOAD_L, 30)
@@ -146,7 +139,7 @@ class RFIDReader:
 
     def close(self):
         self.spi.close()
-        self.rst.close()
+        #self.rst.close()
 
 
 # =========================================================

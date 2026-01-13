@@ -12,6 +12,53 @@ from tkinter import ttk
 import threading
 import time
 from tkinter import simpledialog
+import sqlite3
+
+USER_DB_PATH = "data/users.db"
+TOOLS_DB_PATH = "data/tools.db"
+
+def get_borrowed_tools(user_uid):
+    conn = sqlite3.connect(TOOLS_DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+	SELECT t.name, t.uid
+	FROM borrows b
+	JOIN tools t ON b.tool_uid = t.uid
+	WHERE b.user_uid = ? AND b.return_time IS NULL
+	""", (user_uid,))
+    tools = c.fetchall()
+    conn.close()
+    return tools
+
+def get_tool_by_uid(uid):
+    conn = sqlite3.connect(TOOLS_DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT * FROM tools WHERE uid = ?", (uid,))
+    tool = c.fetchone()
+    conn.commit()
+    conn.close()
+
+def mark_tool_borrowed(user_uid, tool_uid):
+    conn = sqlite3.connect(TOOLS_DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO borrows (user_uid, tool_uid) VALUES (?, ?)", (user_uid, tool_uid))
+    conn.commit()
+    conn.close()
+
+def get_user_by_uid(uid):
+    conn = sqlite3.connect(USER_DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT uid, name FROM users WHERE uid=?", (uid,))
+    result = c.fetchone()
+    conn.close()
+    return result
+
+def add_user(uid, name):
+    conn = sqlite3.connect(USER_DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users (uid, name) VALUES (?, ?)", (uid, name))
+    conn.commit()
+    conn.close()
 
 # =========================
 # UI CLASSES
@@ -136,7 +183,6 @@ class UserAuthPage(tk.Frame):
 
     def authenticate_user(self, uid_str):
         """Check if user exists and navigate to UserPage"""
-        from main import get_user_by_uid  # or your DB module
         user = get_user_by_uid(uid_str)
         if user:
             self.update_message(f"Welcome {user[1]}!")
@@ -193,7 +239,6 @@ class UserRegPage(tk.Frame):
         # Ask for name (main thread safe)
         name = simpledialog.askstring("Sisesta nimi", f"Enter name for UID {uid_str}:")
         if name:
-            from main import add_user
             add_user(uid_str, name)
             self.update_message(f"User {name} registered with UID {uid_str}!")
 
@@ -259,7 +304,6 @@ class UserPage(tk.Frame):
             self.tool_listbox.insert(tk.END, "No user logged in.")
             return
 
-        from main import get_borrowed_tools
         tools = get_borrowed_tools(user_uid)
 
         if not tools:
@@ -316,7 +360,6 @@ class UserPage(tk.Frame):
             self.update_borrowed_tools()
             return
 
-        from main import mark_tool_returned
         user_uid = self.controller.current_user_uid
 
         mark_tool_returned(user_uid, expected_tool_uid)
@@ -369,7 +412,6 @@ class BorrowToolPage(tk.Frame):
 
     def borrow_tool(self, app, tool_uid):
         """Check tool in DB and mark as borrowed by current user"""
-        from main import get_tool_by_uid, mark_tool_borrowed
 
         if not getattr(app, "current_user_uid", None):
             self.update_message("No authenticated user!")

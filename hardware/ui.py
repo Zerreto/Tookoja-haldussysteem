@@ -60,7 +60,7 @@ def add_user(uid, name):
     c.execute("INSERT OR IGNORE INTO users (uid, name) VALUES (?, ?)", (uid, name))
     conn.commit()
     conn.close()
-    
+
 def mark_tool_returned(user_uid, tool_uid):
     """Set return_time of borrowed tool to now"""
     conn = sqlite3.connect(TOOLS_DB_PATH)
@@ -84,7 +84,7 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("Tookoja haldusysteem")
-        self.geometry("800x480") #Window size
+        self.geometry("1280x720") #Window size
 
         # Container for all pages
         self.container = tk.Frame(self)

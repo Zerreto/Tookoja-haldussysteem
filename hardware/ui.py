@@ -60,6 +60,19 @@ def add_user(uid, name):
     c.execute("INSERT OR IGNORE INTO users (uid, name) VALUES (?, ?)", (uid, name))
     conn.commit()
     conn.close()
+    
+def mark_tool_returned(user_uid, tool_uid):
+    """Set return_time of borrowed tool to now"""
+    conn = sqlite3.connect(TOOLS_DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        UPDATE borrows
+        SET return_time = CURRENT_TIMESTAMP
+        WHERE user_uid = ? AND tool_uid = ? AND return_time IS NULL
+    """, (user_uid, tool_uid))
+    conn.commit()
+    conn.close()
+
 
 # =========================
 # UI CLASSES

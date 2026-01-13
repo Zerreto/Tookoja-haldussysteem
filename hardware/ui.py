@@ -35,8 +35,9 @@ def get_tool_by_uid(uid):
     c = conn.cursor()
     c.execute("SELECT * FROM tools WHERE uid = ?", (uid,))
     tool = c.fetchone()
-    conn.commit()
     conn.close()
+    return tool  # <--- return this!
+
 
 def mark_tool_borrowed(user_uid, tool_uid):
     conn = sqlite3.connect(TOOLS_DB_PATH)

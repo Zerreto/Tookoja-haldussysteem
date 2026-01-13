@@ -84,7 +84,7 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("Tookoja haldusysteem")
-        self.geometry("1280x720") #Window size
+        self.geometry("720x1280") #Window size
 
         # Container for all pages
         self.container = tk.Frame(self)

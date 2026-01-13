@@ -281,6 +281,13 @@ class UserPage(tk.Frame):
             command=lambda: controller.show(HomePage)
         ).pack(pady=5)
 
+        ttk.Button(
+            self,
+            text="Open Locker",
+            command=lambda: self.controller.open_lock()
+        ).pack(pady=10)
+
+
     # -------------------------
     # UI helpers
     # -------------------------

@@ -15,6 +15,8 @@ from time import sleep
 from tkinter import simpledialog
 from periphery import GPIO
 import time
+import threading
+
 # Database paths
 USER_DB_PATH = "data/users.db"
 TOOLS_DB_PATH = "data/tools.db"
@@ -26,11 +28,12 @@ lock_gpio = GPIO(f"/dev/gpiochip0", LOCK_PIN, "out")
 lock_gpio.write(False)  # default LOW = locked
 
 def open_lock(duration=5):
-    """Activate solenoid to unlock for a short duration (seconds)."""
-    print("open lock")
-    #lock_gpio.write(True)   # energize solenoid
-    #sleep(duration)         # keep lock open
-    #lock_gpio.write(False)  # lock again
+    """Open solenoid for `duration` seconds in a background thread."""
+    def worker():
+        lock_gpio.write(True)   # turn on solenoid → unlock
+        time.sleep(duration)    # wait 5 seconds
+        lock_gpio.write(False)  # turn off solenoid → lock again
+    threading.Thread(target=worker, daemon=True).start()
 
 def get_borrowed_tools(user_uid):
     """Return a list of tools currently borrowed by the user."""
@@ -93,6 +96,7 @@ def main():
     app = App()
 
     app.rfid = rfid
+    app.open_lock = open_lock
 
     # Run UI loop
     try:

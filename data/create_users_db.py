@@ -1,8 +1,8 @@
 import sqlite3
 import os
 
-USER_DB_PATH = "users.db"
-TOOLS_DB_PATH = "tools.db"
+USER_DB_PATH = "data/users.db"
+TOOLS_DB_PATH = "data/tools.db"
 
 # -----------------------------
 # Ensure database directories exist

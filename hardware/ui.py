@@ -14,8 +14,8 @@ import time
 from tkinter import simpledialog
 import sqlite3
 
-USER_DB_PATH = "data/users.db"
-TOOLS_DB_PATH = "data/tools.db"
+USER_DB_PATH = "data/data/users.db"
+TOOLS_DB_PATH = "data/data/tools.db"
 
 def get_borrowed_tools(user_uid):
     conn = sqlite3.connect(TOOLS_DB_PATH)

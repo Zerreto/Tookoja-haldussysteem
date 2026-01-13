@@ -25,7 +25,7 @@ LOCK_PIN = 18  # GPIO pin for solenoid lock
 
 # Initialize GPIO once
 lock_gpio = GPIO(f"/dev/gpiochip0", LOCK_PIN, "out")
-lock_gpio.write(False)  # default LOW = locked
+lock_gpio.write(True)  # default LOW = locked
 
 def open_lock(duration=5):
     """Open solenoid for `duration` seconds in a background thread."""
